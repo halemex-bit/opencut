@@ -30,58 +30,11 @@ jobs:
       - name: Install dependencies with Bun
         run: bun install
 
-      # @noble/ciphers 2.x exports ./utils.js but some tooling still imports ./utils.
       - name: Patch @noble/ciphers utils export alias
-        run: |
-          node <<'NODE'
-          const fs = require("fs");
-          const path = require("path");
-          const pkgPath = path.join("node_modules", "@noble", "ciphers", "package.json");
-          if (!fs.existsSync(pkgPath)) {
-            console.log("skip noble patch: package missing");
-            process.exit(0);
-          }
-          const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-          if (pkg.exports && pkg.exports["./utils.js"] && !pkg.exports["./utils"]) {
-            pkg.exports["./utils"] = pkg.exports["./utils.js"];
-            fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-            console.log("Aliased @noble/ciphers ./utils -> ./utils.js");
-          } else {
-            console.log("No @noble/ciphers ./utils alias needed");
-          }
-          NODE
+        run: node scripts/patch-noble-ciphers.js
 
-      # fdir pulls Node fs via createRequire; Workers can't use it. Stub before OpenNext bundles.
       - name: Stub fdir for Cloudflare Workers
-        run: |
-          node <<'NODE'
-          const fs = require("fs");
-          const path = require("path");
-          const dir = path.join("node_modules", "fdir", "dist");
-          fs.mkdirSync(dir, { recursive: true });
-          const stub = `export class Builder {
-  glob() { return this; }
-  withFullPaths() { return this; }
-  withRelativePaths() { return this; }
-  withPathSeparator() { return this; }
-  withErrors() { return this; }
-  onlyDirs() { return this; }
-  onlyFiles() { return this; }
-  filter() { return this; }
-  exclude() { return this; }
-  concurrency() { return this; }
-  crawl() { return this; }
-  crawlWithOptions() { return this; }
-  sync() { return []; }
-  async() { return Promise.resolve([]); }
-  withAbort() { return this; }
-}
-export default Builder;
-`;
-          fs.writeFileSync(path.join(dir, "index.mjs"), stub);
-          fs.writeFileSync(path.join(dir, "index.js"), stub.replace("export class", "class").replace("export default Builder;", "module.exports = { Builder, default: Builder };"));
-          console.log("Stubbed fdir for Workers");
-          NODE
+        run: node scripts/stub-fdir-for-workers.js
 
       - name: Write production env (editor-only placeholders)
         env:
