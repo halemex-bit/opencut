@@ -27,10 +27,8 @@ jobs:
         with:
           bun-version: 1.2.18
 
-      # npm avoids bun package rewrites that break OpenNext/esbuild (fdir/picomatch).
-      # Bun stays installed because OpenNext invokes `bun run build` from packageManager.
-      - name: Install dependencies with npm
-        run: npm install --no-fund --no-audit --legacy-peer-deps
+      - name: Install dependencies with Bun
+        run: bun install
 
       # @noble/ciphers 2.x exports ./utils.js but some tooling still imports ./utils.
       - name: Patch @noble/ciphers utils export alias
@@ -39,15 +37,24 @@ jobs:
           const fs = require("fs");
           const path = require("path");
           const pkgPath = path.join("node_modules", "@noble", "ciphers", "package.json");
+          if (!fs.existsSync(pkgPath)) {
+            console.log("skip noble patch: package missing");
+            process.exit(0);
+          }
           const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
           if (pkg.exports && pkg.exports["./utils.js"] && !pkg.exports["./utils"]) {
             pkg.exports["./utils"] = pkg.exports["./utils.js"];
             fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
             console.log("Aliased @noble/ciphers ./utils -> ./utils.js");
           } else {
-            console.log("No @noble/ciphers ./utils alias needed", Object.keys(pkg.exports || {}));
+            console.log("No @noble/ciphers ./utils alias needed");
           }
           NODE
+
+      # Replace bun-rewritten fdir/picomatch copies with clean npm packages for OpenNext esbuild.
+      - name: Reinstall clean fdir and picomatch
+        run: |
+          npm install fdir@6.5.0 picomatch@4.0.2 --no-save --legacy-peer-deps
 
       - name: Write production env (editor-only placeholders)
         env:
@@ -87,4 +94,4 @@ jobs:
           if [ -z "$NEXT_PUBLIC_SITE_URL" ]; then
             export NEXT_PUBLIC_SITE_URL="https://opencut.workers.dev"
           fi
-          npm run deploy
+          bun run deploy
