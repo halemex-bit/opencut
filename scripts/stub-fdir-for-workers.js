@@ -1,74 +1,101 @@
 const fs = require("fs");
 const path = require("path");
 
-const dir = path.join("node_modules", "fdir", "dist");
-fs.mkdirSync(dir, { recursive: true });
+function makeStub(kind) {
+  if (kind === "mjs") {
+    return [
+      "function createBuilder() {",
+      "  const builder = new Proxy(function () {}, {",
+      "    apply() { return builder; },",
+      "    get(_target, prop) {",
+      "      if (prop === 'sync') return () => [];",
+      "      if (prop === 'async' || prop === 'withPromise') {",
+      "        return () => Promise.resolve([]);",
+      "      }",
+      "      if (prop === 'then') return undefined;",
+      "      return () => builder;",
+      "    },",
+      "  });",
+      "  return builder;",
+      "}",
+      "export class Builder {",
+      "  constructor() { return createBuilder(); }",
+      "}",
+      "export function fdir() { return createBuilder(); }",
+      "export default Builder;",
+      "",
+    ].join("\n");
+  }
 
-const stubMjs = [
-  "export class Builder {",
-  "  glob() { return this; }",
-  "  withFullPaths() { return this; }",
-  "  withRelativePaths() { return this; }",
-  "  withPathSeparator() { return this; }",
-  "  withErrors() { return this; }",
-  "  onlyDirs() { return this; }",
-  "  onlyFiles() { return this; }",
-  "  filter() { return this; }",
-  "  exclude() { return this; }",
-  "  concurrency() { return this; }",
-  "  crawl(_root) { return this; }",
-  "  crawlWithOptions() { return this; }",
-  "  sync() { return []; }",
-  "  async() { return Promise.resolve([]); }",
-  "  withAbort() { return this; }",
-  "}",
-  "export function fdir() { return new Builder(); }",
-  "export default Builder;",
-  "",
-].join("\n");
+  return [
+    '"use strict";',
+    "function createBuilder() {",
+    "  const builder = new Proxy(function () {}, {",
+    "    apply() { return builder; },",
+    "    get(_target, prop) {",
+    "      if (prop === 'sync') return () => [];",
+    "      if (prop === 'async' || prop === 'withPromise') {",
+    "        return () => Promise.resolve([]);",
+    "      }",
+    "      if (prop === 'then') return undefined;",
+    "      return () => builder;",
+    "    },",
+    "  });",
+    "  return builder;",
+    "}",
+    "class Builder {",
+    "  constructor() { return createBuilder(); }",
+    "}",
+    "function fdir() { return createBuilder(); }",
+    "module.exports = { Builder, fdir, default: Builder };",
+    "",
+  ].join("\n");
+}
 
-const stubCjs = [
-  '"use strict";',
-  "class Builder {",
-  "  glob() { return this; }",
-  "  withFullPaths() { return this; }",
-  "  withRelativePaths() { return this; }",
-  "  withPathSeparator() { return this; }",
-  "  withErrors() { return this; }",
-  "  onlyDirs() { return this; }",
-  "  onlyFiles() { return this; }",
-  "  filter() { return this; }",
-  "  exclude() { return this; }",
-  "  concurrency() { return this; }",
-  "  crawl(_root) { return this; }",
-  "  crawlWithOptions() { return this; }",
-  "  sync() { return []; }",
-  "  async() { return Promise.resolve([]); }",
-  "  withAbort() { return this; }",
-  "}",
-  "function fdir() { return new Builder(); }",
-  "module.exports = { Builder, fdir, default: Builder };",
-  "",
-].join("\n");
+function stubDir(dir) {
+  const dist = path.join(dir, "dist");
+  fs.mkdirSync(dist, { recursive: true });
+  fs.writeFileSync(path.join(dist, "index.mjs"), makeStub("mjs"));
+  fs.writeFileSync(path.join(dist, "index.cjs"), makeStub("cjs"));
+  fs.writeFileSync(path.join(dist, "index.js"), makeStub("cjs"));
 
-fs.writeFileSync(path.join(dir, "index.mjs"), stubMjs);
-fs.writeFileSync(path.join(dir, "index.cjs"), stubCjs);
+  const pkgPath = path.join(dir, "package.json");
+  const pkg = fs.existsSync(pkgPath)
+    ? JSON.parse(fs.readFileSync(pkgPath, "utf8"))
+    : { name: "fdir", version: "6.5.0-stub" };
+  pkg.type = "module";
+  pkg.main = "./dist/index.cjs";
+  pkg.module = "./dist/index.mjs";
+  pkg.exports = {
+    ".": {
+      import: "./dist/index.mjs",
+      require: "./dist/index.cjs",
+    },
+    "./package.json": "./package.json",
+  };
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+}
 
-const pkgPath = path.join("node_modules", "fdir", "package.json");
-const pkg = fs.existsSync(pkgPath)
-  ? JSON.parse(fs.readFileSync(pkgPath, "utf8"))
-  : { name: "fdir", version: "6.5.0-stub" };
+function walk(dir, out) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === "fdir") out.push(full);
+      walk(full, out);
+    }
+  }
+}
 
-pkg.type = "module";
-pkg.main = "./dist/index.cjs";
-pkg.module = "./dist/index.mjs";
-pkg.exports = {
-  ".": {
-    import: "./dist/index.mjs",
-    require: "./dist/index.cjs",
-  },
-  "./package.json": "./package.json",
-};
+const fdirDirs = [];
+for (const root of ["node_modules", path.join("apps", "web", ".open-next")]) {
+  if (fs.existsSync(root)) walk(root, fdirDirs);
+}
 
-fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-console.log("Stubbed fdir for Workers");
+for (const dir of fdirDirs) stubDir(dir);
+console.log(`Stubbed ${fdirDirs.length} fdir package(s) for Workers`);
