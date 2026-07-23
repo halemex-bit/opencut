@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
 		// Archived classic fork: unlock Cloudflare deploy without fixing all legacy TS.
 		ignoreBuildErrors: true,
 	},
+	// Keep these out of OpenNext/esbuild bundle (bun/npm linker quirks with fdir→picomatch).
+	serverExternalPackages: ["fdir", "picomatch", "tinyglobby"],
 	images: {
 		remotePatterns: [
 			{

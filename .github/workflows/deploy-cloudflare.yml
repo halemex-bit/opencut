@@ -27,10 +27,9 @@ jobs:
         with:
           bun-version: 1.2.18
 
-      # npm + hoisted avoids bun isolated rewrites that break OpenNext/esbuild (fdir/picomatch).
+      # npm avoids bun package rewrites that break OpenNext/esbuild (fdir/picomatch).
       - name: Install dependencies with npm
-        run: |
-          npm install --no-fund --no-audit
+        run: npm install --no-fund --no-audit --legacy-peer-deps
 
       - name: Write production env (editor-only placeholders)
         env:
