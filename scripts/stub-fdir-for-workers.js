@@ -28,6 +28,7 @@ const stubMjs = [
 ].join("\n");
 
 const stubCjs = [
+  '"use strict";',
   "class Builder {",
   "  glob() { return this; }",
   "  withFullPaths() { return this; }",
@@ -51,21 +52,23 @@ const stubCjs = [
 ].join("\n");
 
 fs.writeFileSync(path.join(dir, "index.mjs"), stubMjs);
-fs.writeFileSync(path.join(dir, "index.js"), stubCjs);
+fs.writeFileSync(path.join(dir, "index.cjs"), stubCjs);
 
 const pkgPath = path.join("node_modules", "fdir", "package.json");
-if (fs.existsSync(pkgPath)) {
-  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-  pkg.exports = {
-    ".": {
-      import: "./dist/index.mjs",
-      require: "./dist/index.js",
-      default: "./dist/index.js",
-    },
-  };
-  pkg.main = "./dist/index.js";
-  pkg.module = "./dist/index.mjs";
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-}
+const pkg = fs.existsSync(pkgPath)
+  ? JSON.parse(fs.readFileSync(pkgPath, "utf8"))
+  : { name: "fdir", version: "6.5.0-stub" };
 
+pkg.type = "module";
+pkg.main = "./dist/index.cjs";
+pkg.module = "./dist/index.mjs";
+pkg.exports = {
+  ".": {
+    import: "./dist/index.mjs",
+    require: "./dist/index.cjs",
+  },
+  "./package.json": "./package.json",
+};
+
+fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
 console.log("Stubbed fdir for Workers");
