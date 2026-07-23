@@ -97,4 +97,7 @@ jobs:
             export NEXT_PUBLIC_SITE_URL="https://opencut.workers.dev"
           fi
           bunx opennextjs-cloudflare build
+          echo "Worker bundle sizes:"
+          du -h .open-next/worker.js .open-next/*.js 2>/dev/null || true
+          find .open-next -name '*.js' -printf '%s %p\n' 2>/dev/null | sort -nr | head -20
           bunx opennextjs-cloudflare deploy

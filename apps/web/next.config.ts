@@ -7,13 +7,20 @@ const nextConfig: NextConfig = {
 		removeConsole: process.env.NODE_ENV === "production",
 	},
 	reactStrictMode: true,
-	productionBrowserSourceMaps: true,
+	productionBrowserSourceMaps: false,
 	output: "standalone",
 	typescript: {
 		// Archived classic fork: unlock Cloudflare deploy without fixing all legacy TS.
 		ignoreBuildErrors: true,
 	},
-	serverExternalPackages: ["fdir", "picomatch", "tinyglobby"],
+	serverExternalPackages: [
+		"fdir",
+		"picomatch",
+		"tinyglobby",
+		"@huggingface/transformers",
+		"onnxruntime-node",
+		"sharp",
+	],
 	images: {
 		remotePatterns: [
 			{
