@@ -69,4 +69,4 @@ jobs:
           if [ -z "$NEXT_PUBLIC_SITE_URL" ]; then
             export NEXT_PUBLIC_SITE_URL="https://opencut.workers.dev"
           fi
-          bun run deploy
+          npm run deploy
