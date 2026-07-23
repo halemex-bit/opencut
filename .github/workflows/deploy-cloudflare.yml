@@ -22,11 +22,6 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Setup Bun (deploy scripts)
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.2.18
-
       # npm avoids bun package rewrites that break OpenNext/esbuild (fdir/picomatch).
       - name: Install dependencies with npm
         run: npm install --no-fund --no-audit --legacy-peer-deps
