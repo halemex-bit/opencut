@@ -31,20 +31,18 @@ jobs:
           AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
         run: |
           SITE_URL="${SITE_URL:-https://opencut.workers.dev}"
-          cat > apps/web/.env.production <<EOF
-          NODE_ENV=production
-          NEXT_PUBLIC_SITE_URL=${SITE_URL}
-          NEXT_PUBLIC_MARBLE_API_URL=https://api.marblecms.com
-          DATABASE_URL=postgresql://user:pass@127.0.0.1:5432/opencut
-          BETTER_AUTH_SECRET=${AUTH_SECRET}
-          UPSTASH_REDIS_REST_URL=https://placeholder.upstash.io
-          UPSTASH_REDIS_REST_TOKEN=placeholder_token
-          MARBLE_WORKSPACE_KEY=placeholder
-          FREESOUND_CLIENT_ID=placeholder
-          FREESOUND_API_KEY=placeholder
-          EOF
-          # Strip accidental leading whitespace from YAML-indented heredoc
-          sed -i 's/^[[:space:]]*//' apps/web/.env.production
+          printf '%s\n' \
+            'NODE_ENV=production' \
+            "NEXT_PUBLIC_SITE_URL=${SITE_URL}" \
+            'NEXT_PUBLIC_MARBLE_API_URL=https://api.marblecms.com' \
+            'DATABASE_URL=postgresql://user:pass@127.0.0.1:5432/opencut' \
+            "BETTER_AUTH_SECRET=${AUTH_SECRET}" \
+            'UPSTASH_REDIS_REST_URL=https://placeholder.upstash.io' \
+            'UPSTASH_REDIS_REST_TOKEN=placeholder_token' \
+            'MARBLE_WORKSPACE_KEY=placeholder' \
+            'FREESOUND_CLIENT_ID=placeholder' \
+            'FREESOUND_API_KEY=placeholder' \
+            > apps/web/.env.production
 
       - name: Deploy to Cloudflare Workers
         working-directory: apps/web
