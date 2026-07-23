@@ -32,6 +32,23 @@ jobs:
       - name: Install dependencies with npm
         run: npm install --no-fund --no-audit --legacy-peer-deps
 
+      # @noble/ciphers 2.x exports ./utils.js but some tooling still imports ./utils.
+      - name: Patch @noble/ciphers utils export alias
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+          const path = require("path");
+          const pkgPath = path.join("node_modules", "@noble", "ciphers", "package.json");
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+          if (pkg.exports && pkg.exports["./utils.js"] && !pkg.exports["./utils"]) {
+            pkg.exports["./utils"] = pkg.exports["./utils.js"];
+            fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+            console.log("Aliased @noble/ciphers ./utils -> ./utils.js");
+          } else {
+            console.log("No @noble/ciphers ./utils alias needed", Object.keys(pkg.exports || {}));
+          }
+          NODE
+
       - name: Write production env (editor-only placeholders)
         env:
           SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
