@@ -12,18 +12,25 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Bun
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Bun (deploy scripts)
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2.18
 
-      - name: Install dependencies
-        run: bun install
+      # npm + hoisted avoids bun isolated rewrites that break OpenNext/esbuild (fdir/picomatch).
+      - name: Install dependencies with npm
+        run: |
+          npm install --no-fund --no-audit
 
       - name: Write production env (editor-only placeholders)
         env:
