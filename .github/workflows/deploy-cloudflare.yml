@@ -51,32 +51,36 @@ jobs:
           }
           NODE
 
-      # Bun/esbuild corrupts optional picomatch requires inside fdir; remove them before OpenNext.
-      - name: Patch fdir for OpenNext esbuild
+      # fdir pulls Node fs via createRequire; Workers can't use it. Stub before OpenNext bundles.
+      - name: Stub fdir for Cloudflare Workers
         run: |
           node <<'NODE'
           const fs = require("fs");
           const path = require("path");
-          const file = path.join("node_modules", "fdir", "dist", "index.mjs");
-          if (!fs.existsSync(file)) {
-            console.log("fdir not found at", file);
-            process.exit(0);
-          }
-          let source = fs.readFileSync(file, "utf8");
-          const before = source;
-          source = source
-            .replace(/__require\.resolve\(["']picomatch["']\);\s*/g, "")
-            .replace(/pm = __require\(["']picomatch["']\);/g, "pm = null;")
-            .replace(/require\.resolve\(["']picomatch["']\);\s*/g, "")
-            .replace(/pm = require\(["']picomatch["']\);/g, "pm = null;");
-          if (source === before) {
-            console.log("No fdir picomatch require found; snippet:");
-            const idx = source.indexOf("picomatch");
-            console.log(idx === -1 ? "(no picomatch string)" : source.slice(Math.max(0, idx - 160), idx + 160));
-          } else {
-            fs.writeFileSync(file, source);
-            console.log("Patched", file);
-          }
+          const dir = path.join("node_modules", "fdir", "dist");
+          fs.mkdirSync(dir, { recursive: true });
+          const stub = `export class Builder {
+  glob() { return this; }
+  withFullPaths() { return this; }
+  withRelativePaths() { return this; }
+  withPathSeparator() { return this; }
+  withErrors() { return this; }
+  onlyDirs() { return this; }
+  onlyFiles() { return this; }
+  filter() { return this; }
+  exclude() { return this; }
+  concurrency() { return this; }
+  crawl() { return this; }
+  crawlWithOptions() { return this; }
+  sync() { return []; }
+  async() { return Promise.resolve([]); }
+  withAbort() { return this; }
+}
+export default Builder;
+`;
+          fs.writeFileSync(path.join(dir, "index.mjs"), stub);
+          fs.writeFileSync(path.join(dir, "index.js"), stub.replace("export class", "class").replace("export default Builder;", "module.exports = { Builder, default: Builder };"));
+          console.log("Stubbed fdir for Workers");
           NODE
 
       - name: Write production env (editor-only placeholders)
