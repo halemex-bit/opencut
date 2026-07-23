@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { withBotId } from "botid/next/config";
+import { withContentCollections } from "@content-collections/next";
 
 const nextConfig: NextConfig = {
 	compiler: {
@@ -12,7 +13,7 @@ const nextConfig: NextConfig = {
 		// Archived classic fork: unlock Cloudflare deploy without fixing all legacy TS.
 		ignoreBuildErrors: true,
 	},
-	serverExternalPackages: ["fdir", "picomatch", "tinyglobby", "esbuild"],
+	serverExternalPackages: ["fdir", "picomatch", "tinyglobby"],
 	images: {
 		remotePatterns: [
 			{
@@ -55,6 +56,4 @@ const nextConfig: NextConfig = {
 	},
 };
 
-// Editor-only Cloudflare fork: skip content-collections wrapper.
-// OpenNext re-evaluates next.config and content-collections pulls esbuild→fs.
-export default withBotId(nextConfig);
+export default withContentCollections(withBotId(nextConfig));
