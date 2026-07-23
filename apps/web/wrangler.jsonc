@@ -4,6 +4,7 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2025-04-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "minify": true,
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
@@ -14,7 +15,6 @@
       "service": "opencut"
     }
   ],
-  // Editor-only placeholders: auth/DB not wired. Media stays in browser (IndexedDB + OPFS).
   "vars": {
     "NODE_ENV": "production",
     "NEXT_PUBLIC_SITE_URL": "https://opencut.ahal3ms-gmail-com.workers.dev",
