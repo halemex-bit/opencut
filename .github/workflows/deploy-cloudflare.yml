@@ -51,10 +51,63 @@ jobs:
           }
           NODE
 
-      # Replace bun-rewritten fdir/picomatch copies with clean npm packages for OpenNext esbuild.
-      - name: Reinstall clean fdir and picomatch
+      # Replace bun-rewritten fdir require shims that break OpenNext/esbuild.
+      - name: Patch fdir for OpenNext esbuild
         run: |
-          npm install fdir@6.5.0 picomatch@4.0.2 --no-save --legacy-peer-deps
+          node <<'NODE'
+          const fs = require("fs");
+          const path = require("path");
+          const roots = ["node_modules"];
+          const targets = [];
+          function walk(dir) {
+            let entries;
+            try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+            for (const entry of entries) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                if (entry.name === ".cache" || entry.name === "dist") {
+                  // still walk dist
+                }
+                if (entry.name === "fdir") {
+                  const candidate = path.join(full, "dist", "index.mjs");
+                  if (fs.existsSync(candidate)) targets.push(candidate);
+                }
+                if (entry.name === "node_modules" || entry.name === ".bun" || entry.name === "fdir" || !entry.name.startsWith(".")) {
+                  walk(full);
+                }
+              }
+            }
+          }
+          walk("node_modules");
+          const broken = /__"([^"]+)"/g;
+          let patched = 0;
+          for (const file of targets) {
+            let source = fs.readFileSync(file, "utf8");
+            if (!broken.test(source) && !source.includes('__require("picomatch")') && !source.includes("__require.resolve")) {
+              continue;
+            }
+            broken.lastIndex = 0;
+            if (broken.test(source)) {
+              broken.lastIndex = 0;
+              source = source.replace(broken, '__require("$1")');
+              fs.writeFileSync(file, source);
+              patched++;
+              console.log("patched absolute require:", file);
+              continue;
+            }
+            // Neutralize optional picomatch require so esbuild never rewrites it.
+            const next = source.replace(
+              /try \{[\s\S]*?pm = __require\(["']picomatch["']\);[\s\S]*?\} catch \{\}/,
+              "try { pm = null; } catch {}"
+            );
+            if (next !== source) {
+              fs.writeFileSync(file, next);
+              patched++;
+              console.log("neutralized picomatch require:", file);
+            }
+          }
+          console.log(`fdir targets=${targets.length} patched=${patched}`);
+          NODE
 
       - name: Write production env (editor-only placeholders)
         env:
