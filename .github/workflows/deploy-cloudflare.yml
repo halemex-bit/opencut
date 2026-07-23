@@ -33,9 +33,6 @@ jobs:
       - name: Patch @noble/ciphers utils export alias
         run: node scripts/patch-noble-ciphers.js
 
-      - name: Stub fdir for Cloudflare Workers
-        run: node scripts/stub-fdir-for-workers.js
-
       - name: Write production env (editor-only placeholders)
         env:
           SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
@@ -55,7 +52,34 @@ jobs:
             'FREESOUND_API_KEY=placeholder' \
             > apps/web/.env.production
 
-      - name: Deploy to Cloudflare Workers
+      - name: Build Next.js app
+        working-directory: apps/web
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+          NEXT_PUBLIC_MARBLE_API_URL: https://api.marblecms.com
+          DATABASE_URL: postgresql://user:pass@127.0.0.1:5432/opencut
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          UPSTASH_REDIS_REST_URL: https://placeholder.upstash.io
+          UPSTASH_REDIS_REST_TOKEN: placeholder_token
+          MARBLE_WORKSPACE_KEY: placeholder
+          FREESOUND_CLIENT_ID: placeholder
+          FREESOUND_API_KEY: placeholder
+        run: |
+          if [ -z "$NEXT_PUBLIC_SITE_URL" ]; then
+            export NEXT_PUBLIC_SITE_URL="https://opencut.workers.dev"
+          fi
+          bun run build
+
+      - name: Stub fdir for Cloudflare Workers
+        run: node scripts/stub-fdir-for-workers.js
+
+      - name: Skip Next rebuild during OpenNext packaging
+        working-directory: apps/web
+        run: |
+          node -e "const fs=require('fs'); const p='package.json'; const j=JSON.parse(fs.readFileSync(p,'utf8')); j.scripts.build='node -e \"process.exit(0)\"'; fs.writeFileSync(p, JSON.stringify(j,null,2)+'\\n');"
+
+      - name: Package with OpenNext and deploy
         working-directory: apps/web
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -74,4 +98,5 @@ jobs:
           if [ -z "$NEXT_PUBLIC_SITE_URL" ]; then
             export NEXT_PUBLIC_SITE_URL="https://opencut.workers.dev"
           fi
-          bun run deploy
+          bunx opennextjs-cloudflare build
+          bunx opennextjs-cloudflare deploy
