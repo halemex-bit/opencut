@@ -13,5 +13,18 @@
       "binding": "WORKER_SELF_REFERENCE",
       "service": "opencut"
     }
-  ]
+  ],
+  // Editor-only placeholders: auth/DB not wired. Media stays in browser (IndexedDB + OPFS).
+  "vars": {
+    "NODE_ENV": "production",
+    "NEXT_PUBLIC_SITE_URL": "https://opencut.ahal3ms-gmail-com.workers.dev",
+    "NEXT_PUBLIC_MARBLE_API_URL": "https://api.marblecms.com",
+    "DATABASE_URL": "postgresql://user:pass@127.0.0.1:5432/opencut",
+    "BETTER_AUTH_SECRET": "3836bf1e1dc96d9e0f13318c4df7ff4b8466251eb9368bf1",
+    "UPSTASH_REDIS_REST_URL": "https://placeholder.upstash.io",
+    "UPSTASH_REDIS_REST_TOKEN": "placeholder_token",
+    "MARBLE_WORKSPACE_KEY": "placeholder",
+    "FREESOUND_CLIENT_ID": "placeholder",
+    "FREESOUND_API_KEY": "placeholder"
+  }
 }
